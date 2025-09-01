@@ -579,6 +579,7 @@ class Xtts(BaseTTS):
                     return_attentions=False,
                     return_latent=True,
                 )
+                end = time.time()
                 print(f"gpt.forward takes: {end - start:.5f} s")
                 if length_scale != 1.0:
                     gpt_latents = F.interpolate(
@@ -588,6 +589,7 @@ class Xtts(BaseTTS):
                 gpt_latents_list.append(gpt_latents.cpu())
                 start = time.time()
                 wavs.append(self.hifigan_decoder(gpt_latents, g=speaker_embedding).cpu().squeeze())
+                end = time.time()
                 print(f"hifigan takes: {end - start:.5f} s")
 
         return {
