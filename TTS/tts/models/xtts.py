@@ -379,7 +379,7 @@ class Xtts(BaseTTS):
 
         return gpt_cond_latents, speaker_embedding
 
-    def synthesize(self, text, config, speaker_wav, language, speaker_id=None, **kwargs):
+    def synthesize(self, text, config, speaker_wav, conditioning_latent, language, speaker_id=None, **kwargs):
         """Synthesize speech with the given input text.
 
         Args:
@@ -416,13 +416,14 @@ class Xtts(BaseTTS):
             "max_ref_len": config.max_ref_len,
             "sound_norm_refs": config.sound_norm_refs,
         })
-        return self.full_inference(text, speaker_wav, language, **settings)
+        return self.full_inference(text, speaker_wav, conditioning_latent, language, **settings)
 
     @torch.inference_mode()
     def full_inference(
         self,
         text,
         ref_audio_path,
+        conditioning_latent,
         language,
         # GPT inference
         temperature=0.75,
@@ -477,14 +478,21 @@ class Xtts(BaseTTS):
             Generated audio clip(s) as a torch tensor. Shape 1,S if k=1 else, (k,1,S) where S is the sample length.
             Sample rate is 24kHz.
         """
-        (gpt_cond_latent, speaker_embedding) = self.get_conditioning_latents(
-            audio_path=ref_audio_path,
-            gpt_cond_len=gpt_cond_len,
-            gpt_cond_chunk_len=gpt_cond_chunk_len,
-            max_ref_length=max_ref_len,
-            sound_norm_refs=sound_norm_refs,
-        )
-
+        import time
+        start = time.time()
+        if conditioning_latent[0] is None or conditioning_latent[1] is None:
+            (gpt_cond_latent, speaker_embedding) = self.get_conditioning_latents(
+                audio_path=ref_audio_path,
+                gpt_cond_len=gpt_cond_len,
+                gpt_cond_chunk_len=gpt_cond_chunk_len,
+                max_ref_length=max_ref_len,
+                sound_norm_refs=sound_norm_refs,
+            )
+        else:
+            (gpt_cond_latent, speaker_embedding) = conditioning_latent
+            print(f"Embedding has already calculated.")
+        end = time.time()
+        print(f"> Embedding time calculation takes {end - start:.5f} s")
         return self.inference(
             text,
             language,
@@ -536,8 +544,9 @@ class Xtts(BaseTTS):
             assert (
                 text_tokens.shape[-1] < self.args.gpt_max_text_tokens
             ), " ❗ XTTS can only generate text with a maximum of 400 tokens."
-
+            import time
             with torch.no_grad():
+                start = time.time()
                 gpt_codes = self.gpt.generate(
                     cond_latents=gpt_cond_latent,
                     text_inputs=text_tokens,
@@ -553,11 +562,14 @@ class Xtts(BaseTTS):
                     output_attentions=False,
                     **hf_generate_kwargs,
                 )
+                end = time.time()
+                print(f"gpt.generate takes: {end - start:.5f} s")
                 expected_output_len = torch.tensor(
                     [gpt_codes.shape[-1] * self.gpt.code_stride_len], device=text_tokens.device
                 )
 
                 text_len = torch.tensor([text_tokens.shape[-1]], device=self.device)
+                start = time.time()
                 gpt_latents = self.gpt(
                     text_tokens,
                     text_len,
@@ -567,14 +579,16 @@ class Xtts(BaseTTS):
                     return_attentions=False,
                     return_latent=True,
                 )
-
+                print(f"gpt.forward takes: {end - start:.5f} s")
                 if length_scale != 1.0:
                     gpt_latents = F.interpolate(
                         gpt_latents.transpose(1, 2), scale_factor=length_scale, mode="linear"
                     ).transpose(1, 2)
 
                 gpt_latents_list.append(gpt_latents.cpu())
+                start = time.time()
                 wavs.append(self.hifigan_decoder(gpt_latents, g=speaker_embedding).cpu().squeeze())
+                print(f"hifigan takes: {end - start:.5f} s")
 
         return {
             "wav": torch.cat(wavs, dim=0).numpy(),

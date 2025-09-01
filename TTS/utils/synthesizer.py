@@ -260,6 +260,7 @@ class Synthesizer(nn.Module):
         speaker_name: str = "",
         language_name: str = "",
         speaker_wav=None,
+        conditioning_latent:tuple = None,
         style_wav=None,
         style_text=None,
         reference_wav=None,
@@ -318,7 +319,7 @@ class Synthesizer(nn.Module):
             # handle Neon models with single speaker.
             elif len(self.tts_model.speaker_manager.name_to_id) == 1:
                 speaker_id = list(self.tts_model.speaker_manager.name_to_id.values())[0]
-            elif not speaker_name and not speaker_wav:
+            elif not speaker_name and not speaker_wav and conditioning_latent is None:
                 raise ValueError(
                     " [!] Looks like you are using a multi-speaker model. "
                     "You need to define either a `speaker_idx` or a `speaker_wav` to use a multi-speaker model."
@@ -387,6 +388,7 @@ class Synthesizer(nn.Module):
                         text=sen,
                         config=self.tts_config,
                         speaker_id=speaker_name,
+                        conditioning_latent = conditioning_latent,
                         voice_dirs=self.voice_dir,
                         d_vector=speaker_embedding,
                         speaker_wav=speaker_wav,
