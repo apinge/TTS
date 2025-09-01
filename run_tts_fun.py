@@ -41,7 +41,25 @@ in case you come back with the same order tomorrow."
 The engineer smiles and says: "Perfect! That’s exactly how MIOpen incremental tuning works."
 """
 
+# Use a ref_audio_path different from the speaker_wav in tts_to_file to check if the input conditioning latent works.
+ref_audio_path = "./reference/i-wish-you-the-best-in-all-your-endeavors-male-spoken-264678.mp3"
+import time
+start_time = time.time()
+# All the hard coded args come from https://huggingface.co/coqui/XTTS-v2/blob/main/config.json
+(gpt_cond_latent, speaker_embedding) = tts.synthesizer.tts_model.get_conditioning_latents(
+    audio_path=ref_audio_path,
+    gpt_cond_len=30, 
+    gpt_cond_chunk_len=4,
+    max_ref_length=30,
+    sound_norm_refs=False,
+        )
+conditioning_latent = (gpt_cond_latent, speaker_embedding)
+exec_time = time.time()-start_time
+print(f"> Embedding time {exec_time}")
+print("> TTS model initialization finished.")
+
 tts.tts_to_file(text=joke,
         file_path="output-en-joke.wav",
         speaker_wav = "./reference/trophy-wife-female-spoken-213777.mp3",
+        conditioning_latent = conditioning_latent,
         language="en")

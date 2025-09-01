@@ -217,13 +217,14 @@ class TTS(nn.Module):
         speaker: str = None,
         language: str = None,
         speaker_wav: str = None,
+        conditioning_latent: tuple = None,
         emotion: str = None,
         speed: float = None,
         **kwargs,
     ) -> None:
         """Check if the arguments are valid for the model."""
         # check for the coqui tts models
-        if self.is_multi_speaker and (speaker is None and speaker_wav is None):
+        if self.is_multi_speaker and (speaker is None and speaker_wav is None and (conditioning_latent[0] is None or conditioning_latent[1] is None)):
             raise ValueError("Model is multi-speaker but no `speaker` is provided.")
         if self.is_multi_lingual and language is None:
             raise ValueError("Model is multi-lingual but no `language` is provided.")
@@ -240,6 +241,7 @@ class TTS(nn.Module):
         speaker: str = None,
         language: str = None,
         speaker_wav: str = None,
+        conditioning_latent: tuple  = None,
         emotion: str = None,
         speed: float = None,
         split_sentences: bool = True,
@@ -271,13 +273,14 @@ class TTS(nn.Module):
                 Additional arguments for the model.
         """
         self._check_arguments(
-            speaker=speaker, language=language, speaker_wav=speaker_wav, emotion=emotion, speed=speed, **kwargs
+            speaker=speaker, language=language, speaker_wav=speaker_wav, conditioning_latent=conditioning_latent, emotion=emotion, speed=speed, **kwargs
         )
         wav = self.synthesizer.tts(
             text=text,
             speaker_name=speaker,
             language_name=language,
             speaker_wav=speaker_wav,
+            conditioning_latent = conditioning_latent,
             reference_wav=None,
             style_wav=None,
             style_text=None,
@@ -293,6 +296,7 @@ class TTS(nn.Module):
         speaker: str = None,
         language: str = None,
         speaker_wav: str = None,
+        conditioning_latent: tuple = None,
         emotion: str = None,
         speed: float = 1.0,
         pipe_out=None,
@@ -329,13 +333,14 @@ class TTS(nn.Module):
             kwargs (dict, optional):
                 Additional arguments for the model.
         """
-        self._check_arguments(speaker=speaker, language=language, speaker_wav=speaker_wav, **kwargs)
+        self._check_arguments(speaker=speaker, language=language, speaker_wav=speaker_wav, conditioning_latent=conditioning_latent, **kwargs)
 
         wav = self.tts(
             text=text,
             speaker=speaker,
             language=language,
             speaker_wav=speaker_wav,
+            conditioning_latent=conditioning_latent,
             split_sentences=split_sentences,
             **kwargs,
         )
