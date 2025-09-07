@@ -39,7 +39,7 @@ The engineer smiles and says: "Perfect! That’s exactly how MIOpen incremental 
 
 # text = "DeepSeek R1 is a large transformer-based language model with strong multi-step reasoning capabilities"
 
-ref_audio_path = "/root/workspace/tts-root/reference_audios/trophy-wife-female-spoken-213777.mp3"
+ref_audio_path = "./reference/trophy-wife-female-spoken-213777.mp3"
 import time
 
 _time = time.time()
