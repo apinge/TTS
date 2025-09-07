@@ -94,7 +94,7 @@ print("> TTS model initialization finished.")
 
 start_time = time.time()
 outputs = model.inference(
-    text=text,
+    text=joke_2,
     language="en",
     gpt_cond_latent=gpt_cond_latent,
     speaker_embedding=speaker_embedding,
